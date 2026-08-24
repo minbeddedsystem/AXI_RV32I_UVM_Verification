@@ -1,4 +1,4 @@
-# AXI_APB_UVM_VIP
+# AXI_APB_RV32I_UVM_Verification
 
 AXI4-Lite / APB UVM Verification IP를 설계하고, 이를 이용해 자체 설계한 하드웨어를 검증하는 프로젝트입니다. 팹리스 SoC 설계/검증 직무 포트폴리오로 진행 중이며, 현재 **Phase 1(AXI4 UVM VIP)이 완료**된 상태입니다.
 
