@@ -1,0 +1,20 @@
+# VCS/Verdi 시뮬레이션 생성물
+work/simv*
+work/csrc/
+work/*.daidir/
+work/DVEfiles/
+work/*.vpd
+work/*.fsdb
+work/*.vdb
+work/*.log
+work/ucli.key
+work/vc_hdrs.h
+work/novas.*
+work/verdiLog/
+work/*.key
+work/AN.DB/
+work/.vlogansetup.env
+
+# 기타
+*.swp
+.DS_Store
