@@ -34,24 +34,24 @@ Coverage 항목: write/read 여부(cp_rw), 레지스터별 접근(cp_addr), 데�
 ### 구조
 
 work/
-├── vip/axi4/ # 재사용 가능한 AXI4-Lite UVM VIP
-│ ├── axi4_interface.sv
-│ ├── axi4_transaction.sv
-│ ├── axi4_sequencer.sv
-│ ├── axi4_sequence.sv
-│ ├── axi4_driver.sv # reset wait, AW/W 병렬 handshake, timeout
-│ ├── axi4_monitor.sv # AW/W 병렬 캡처
-│ ├── axi4_agent.sv
-│ └── axi4_coverage.sv
+├── vip/axi4/              # 재사용 가능한 AXI4-Lite UVM VIP
+│   ├── axi4_interface.sv
+│   ├── axi4_transaction.sv
+│   ├── axi4_sequencer.sv
+│   ├── axi4_sequence.sv
+│   ├── axi4_driver.sv       # reset wait, AW/W 병렬 handshake, timeout
+│   ├── axi4_monitor.sv      # AW/W 병렬 캡처
+│   ├── axi4_agent.sv
+│   └── axi4_coverage.sv
 ├── rtl/example_dut/
-│ └── axi_lite_reg_slave.sv
+│   └── axi_lite_reg_slave.sv
 ├── tb/vip_standalone_tb/
-│ ├── axi4_wr_rd_seq.sv
-│ ├── axi4_scoreboard.sv
-│ └── axi4_dut_test.sv
+│   ├── axi4_wr_rd_seq.sv
+│   ├── axi4_scoreboard.sv
+│   └── axi4_dut_test.sv
 └── docs/
-├── verification_plan.md
-└── bug_log.md
+    ├── verification_plan.md
+    └── bug_log.md
 
 
 ### 주요 트러블슈팅
