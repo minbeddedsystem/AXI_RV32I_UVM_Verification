@@ -33,6 +33,7 @@ Coverage 항목: write/read 여부(cp_rw), 레지스터별 접근(cp_addr), 데�
 
 ### 구조
 
+```
 work/
 ├── vip/axi4/              # 재사용 가능한 AXI4-Lite UVM VIP
 │   ├── axi4_interface.sv
@@ -52,7 +53,7 @@ work/
 └── docs/
     ├── verification_plan.md
     └── bug_log.md
-
+```
 
 ### 주요 트러블슈팅
 
