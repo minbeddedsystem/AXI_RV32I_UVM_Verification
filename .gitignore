@@ -1,4 +1,3 @@
-# VCS/Verdi 시뮬레이션 생성물
 work/simv*
 work/csrc/
 work/*.daidir/
@@ -14,7 +13,6 @@ work/verdiLog/
 work/*.key
 work/AN.DB/
 work/.vlogansetup.env
-
-# 기타
+work/signal.rc
 *.swp
 .DS_Store

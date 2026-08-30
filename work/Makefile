@@ -14,7 +14,7 @@ SRC    ?= $(TOP).sv
 SIMV   := simv_$(TOP)
 FSDB   := $(TOP).fsdb
 
-VCS_OPTS := -full64 -sverilog -debug_access+all
+VCS_OPTS := -full64 -sverilog -debug_access+all -kdb
 UVM_OPTS := -ntb_opts uvm
 
 ifeq ($(UVM),1)
@@ -42,7 +42,7 @@ waves:
 	FSDB=$(FSDB) ./$(SIMV) -ucli -do "dump.tcl"
 
 verdi:
-	verdi -ssf $(FSDB) &
+	verdi -ssf $(FSDB) -dbdir $(SIMV).daidir &
 
 clean:
 	rm -rf simv* *.daidir *.vpd *.fsdb csrc DVEfiles ucli.key \
