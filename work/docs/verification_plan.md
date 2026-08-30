@@ -47,3 +47,43 @@ monitor → scoreboard / coverage
 - SVA 기반 프로토콜 체커
 - Error response(SLVERR/DECERR) 시나리오
 - Regression 자동화 (다중 seed)
+
+
+
+## Phase 2 — RV32I 5-Stage Pipeline CPU
+
+### 검증 목표
+
+싱글사이클 RV32I CPU를 5단(IF-ID-EX-MEM-WB) 파이프라인으로 재설계하면서 발생하는 hazard(load-use, control)를 forwarding/stall/flush로 올바르게 처리하는지 검증한다.
+
+### 검증 대상
+
+- IF/ID/EX/MEM/WB 5개 파이프라인 스테이지
+- forwarding_unit (EX/MEM, MEM/WB 2단계 forwarding)
+- hazard_unit (load-use stall, branch/jump flush)
+
+### 검증 전략
+
+UVM 대신, 기존에 보유하고 있던 싱글사이클 RV32I CPU를 golden model로 재사용하는 self-checking testbench 방식을 사용했다.
+
+1. golden model(싱글사이클)과 DUT(파이프라인)에 동일한 명령어 메모리(`instruction_mem_sort.mem`)를 로드
+2. 두 CPU가 레지스터 파일에 write하는 이벤트(`waddr`, `wdata`)를 각각 큐에 순서대로 push
+3. `cpu_scoreboard`가 두 큐를 순서대로 pop하며 비교 (사이클 타이밍이 달라도 "같은 프로그램이면 같은 순서로 같은 값을 쓴다"는 것만 비교하면 되므로 큐 기반 순서 비교로 충분)
+4. x0 write(아키텍처상 항상 무시됨)는 비교 대상에서 제외
+
+### 사용한 테스트 프로그램
+
+R-type 10개, I-type 9개, S-type(store) 3개, IL-type(load) 5개, B-type(branch, 전부 taken) 6개, U-type(LUI/AUIPC) 2개, J-type(JAL/JALR) 2개 — RV32I 전체 명령어 카테고리를 한 번씩 이상 실행하도록 구성.
+
+### 결과
+
+| 항목 | 결과 |
+|---|---|
+| 비교된 레지스터 write 이벤트 | 532건 |
+| PASS | 532 |
+| FAIL | 0 |
+
+### 향후 보강 (시간 되면)
+
+- Functional coverage: 명령어 타입별 실행 여부, hazard(load-use stall / branch flush) 발생 여부 커버리지
+- AXI4-Lite 브리지를 통해 Phase 1 AXI4 UVM VIP로 정식 UVM 환경 통합 검증
