@@ -69,3 +69,32 @@
 ### Phase 2 최종 검증 결과
 
 golden model 기반 scoreboard 비교: 레지스터 write 이벤트 532건 중 **PASS 532 / FAIL 0**.
+
+
+
+## Phase 3 — APB UVM VIP + AXI-APB Bridge
+
+### 1. `` `timescale `` 지시어와 UVM 패키지 파싱 충돌
+
+**증상**: `apb_interface.sv`를 포함해 UVM 클래스 파일들에 `` `timescale 1ns / 1ps `` 를 넣고 `-ntb_opts uvm`으로 컴파일했더니 `Error-[ITSFM] Illegal `timescale for module` 발생. 이어서 뒤에 파싱되는 `apb_transaction.sv`에서도 `uvm_sequence_item` 토큰을 못 찾는 문법 에러로 이어짐.
+
+**원인**: VCS가 UVM 패키지(`uvm_pkg.sv`, `` `timescale `` 없음)를 SRC 목록보다 먼저 파싱하는데, 그 뒤에 `` `timescale `` 이 있는 모듈이 나오면 "이전 모듈/패키지들과 timescale 사용 여부가 다르다"는 이유로 에러가 남. 첫 파일에서 파싱이 깨지면서 그 여파로 다음 파일 파싱도 같이 꼬임.
+
+**해결**: UVM 클래스를 담은 파일들(`apb_transaction.sv`, `apb_sequencer.sv`, `apb_driver.sv`, `apb_monitor.sv`, `apb_agent.sv`, `apb_coverage.sv`, sequence/scoreboard/test 파일들)에서 `` `timescale `` 을 전부 제거. 순수 RTL 모듈(`apb_interface.sv`, `apb_reg_slave.sv`, `axi_apb_bridge.sv`)에도 동일하게 넣지 않는 것으로 통일.
+
+### 2. UVM 클래스(`uvm_sequence_item` 등) 인식 불가
+
+**증상**: `` `timescale `` 제거 후에도 `apb_transaction.sv`에서 `uvm_sequence_item`을 알 수 없는 타입이라고 함.
+
+**원인**: `-ntb_opts uvm` 옵션이 UVM 패키지 자체는 컴파일에 포함시켜주지만, 각 소스 파일에서 그 패키지 내용을 실제로 쓰려면 `import uvm_pkg::*;` 와 `` `include "uvm_macros.svh" `` 를 파일마다 명시적으로 선언해야 함.
+
+**해결**: UVM 클래스를 쓰는 모든 파일 맨 위에 아래 두 줄 추가.
+```systemverilog
+import uvm_pkg::*;
+`include "uvm_macros.svh"
+```
+
+### Phase 3 최종 검증 결과
+
+- APB VIP 단독 검증: PASS 13 / FAIL 0, Coverage 100%
+- AXI4 VIP → axi_apb_bridge → APB 슬레이브 통합 검증: PASS 13 / FAIL 0, Coverage 100%, UVM_ERROR/FATAL 0

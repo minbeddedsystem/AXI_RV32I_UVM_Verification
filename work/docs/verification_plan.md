@@ -87,3 +87,36 @@ R-type 10개, I-type 9개, S-type(store) 3개, IL-type(load) 5개, B-type(branch
 
 - Functional coverage: 명령어 타입별 실행 여부, hazard(load-use stall / branch flush) 발생 여부 커버리지
 - AXI4-Lite 브리지를 통해 Phase 1 AXI4 UVM VIP로 정식 UVM 환경 통합 검증
+
+
+
+## Phase 3 — APB UVM VIP + AXI-APB Bridge
+
+### 검증 목표
+
+1. APB 프로토콜(SETUP→ACCESS 2단계, 단일 채널)을 처리하는 재사용 가능한 UVM VIP를 구축한다.
+2. AXI4-Lite ↔ APB 변환 브리지를 설계하고, Phase 1 AXI4 VIP를 재사용해서 브리지 너머 실제 APB 슬레이브까지 end-to-end로 검증한다.
+
+### 검증 대상
+
+- APB VIP: `apb_interface`, `apb_transaction`, `apb_sequencer`, `apb_driver`, `apb_monitor`, `apb_agent`, `apb_coverage`
+- `axi_apb_bridge` (AXI4-Lite 슬레이브 포트 ↔ APB 마스터 포트 변환 FSM)
+
+### 검증 전략
+
+**1단계 — APB VIP 단독 검증**: Phase 1과 동일한 구조(driver/monitor/agent/sequence/scoreboard/coverage)로 APB VIP를 구축하고, 예제 APB 슬레이브(`apb_reg_slave`, 레지스터 4개)를 대상으로 write-read 데이터 무결성 검증.
+
+**2단계 — 브리지 통합 검증**: `axi_apb_bridge`를 AXI4-Lite 슬레이브 겸 APB 마스터로 설계. Phase 1의 AXI4 VIP(`axi4_agent`, `axi4_wr_rd_seq`, `axi4_scoreboard`, `axi4_coverage`)를 그대로 재사용해서 브리지 상단(AXI4-Lite)에 연결하고, 브리지 하단(APB)은 `apb_reg_slave`에 직접 연결. AXI4 VIP가 보낸 write/read 명령이 브리지를 거쳐 실제 APB 슬레이브까지 정확히 전달되고 응답이 되돌아오는지 검증. 이 단계에서는 APB VIP(driver/monitor)를 별도로 쓰지 않음 — 브리지 자체가 검증 대상이자 APB 마스터 역할을 겸하기 때문.
+
+### 결과
+
+| 항목 | 결과 |
+|---|---|
+| APB VIP 단독 검증 (write 13 / read 13) | PASS 13 / FAIL 0, Coverage 100% |
+| AXI-APB 브리지 통합 검증 (AXI4 VIP → 브리지 → APB 슬레이브) | PASS 13 / FAIL 0, Coverage 100%, UVM_ERROR/FATAL 0 |
+
+### 향후 보강 (시간 되면)
+
+- 브리지에 wait state(APB `pready` 지연)가 있는 슬레이브 대상 테스트 추가
+- RAL(Register Abstraction Layer) 도입
+- virtual sequence로 AXI4 VIP + RV32I CPU(브리지 경유) + APB VIP 통합 시나리오 검증
