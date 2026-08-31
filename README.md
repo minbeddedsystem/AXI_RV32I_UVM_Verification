@@ -1,6 +1,6 @@
 # AXI_RV32I_UVM_Verification
 
-AXI4-Lite UVM VIP를 설계하고, 이를 이용해 RV32I 5-stage 파이프라인 CPU와 주변장치를 검증하는 프로젝트입니다. 팹리스 SoC 설계/검증 직무 포트폴리오로 진행 중이며, 현재 **Phase 1(AXI4 UVM VIP), Phase 2(RV32I 5-stage 파이프라인 CPU)가 완료**된 상태입니다.
+AXI4-Lite / APB UVM VIP를 설계하고, 이를 이용해 RV32I 5-stage 파이프라인 CPU와 AXI-APB 브리지를 검증하는 프로젝트입니다. 팹리스 SoC 설계/검증 직무 포트폴리오로 진행했으며, **Phase 1~3 전체 완료**된 상태입니다.
 
 ## Verification Flow
 
@@ -14,7 +14,7 @@ AXI4-Lite UVM VIP를 설계하고, 이를 이용해 RV32I 5-stage 파이프라�
 | 시뮬레이터 | Synopsys VCS |
 | 디버깅 툴 | Synopsys Verdi |
 | 언어 | SystemVerilog |
-| 진행 단계 | Phase 1 완료 (AXI4 VIP), Phase 2 완료 (RV32I 5-stage 파이프라인 CPU), Phase 3(APB VIP) 진행 예정 |
+| 진행 단계 | Phase 1 완료 (AXI4 VIP), Phase 2 완료 (RV32I 5-stage 파이프라인 CPU), Phase 3 완료 (APB VIP + AXI-APB 브리지) |
 
 ## Phase 1 — AXI4-Lite UVM VIP
 
@@ -112,9 +112,54 @@ work/tb/cpu_pipeline_tb/
 - **[버그] Golden model 조합논리 무한루프**: 파이프라인 register_file에 넣은 write-through bypass(같은 사이클 write-after-read 처리)를 golden model(싱글사이클)에도 그대로 재사용했더니, 읽기→ALU→쓰기→bypass→읽기로 되돌아오는 진짜 combinational loop가 생겨 시뮬레이션이 멈춤(hang). 원인을 heartbeat 출력과 단독 모듈 테스트로 좁혀서 확인 후, golden model 전용 register_file(bypass 없음)을 별도로 분리해 해결.
 - **[버그] EX/MEM 단계 forwarding 오류**: `LUI x15, ... ; ADDI x15, x15, ...`처럼 상위 20비트를 만든 직후 바로 그 레지스터를 쓰는 패턴에서 값이 틀리게 나옴. 원인은 EX/MEM 단계 forwarding이 무조건 ALU 결과(`mem_alu_result`)만 넘기고 있었던 것 — LUI/AUIPC/JAL/JALR은 최종 write-back 값이 ALU 결과가 아니라 immediate/pc+imm/pc+4이기 때문. WB 단계와 동일한 5-way mux를 EX/MEM 단계에도 추가해서 해결.
 
-## Phase 3 — APB UVM VIP (예정)
+## Phase 3 — APB UVM VIP + AXI-APB Bridge
 
-APB UVM VIP를 추가로 구축하고, AXI-APB 브리지를 통해 검증할 예정입니다.
+AXI4-Lite VIP와 구조는 같지만 프로토콜은 훨씬 단순한(SETUP→ACCESS 2단계, 단일 채널) APB UVM VIP를 새로 만들고, AXI4-Lite ↔ APB 프로토콜 변환 브리지를 설계해서 Phase 1 AXI4 VIP로 브리지 너머의 APB 슬레이브까지 end-to-end로 검증했습니다.
+
+### 결과
+
+| 항목 | 결과 |
+|---|---|
+| APB VIP 단독 검증 | PASS 13 / FAIL 0, Coverage 100% |
+| AXI-APB 브리지 통합 검증 (AXI4 VIP → 브리지 → APB 슬레이브) | PASS 13 / FAIL 0, Coverage 100%, UVM_ERROR/FATAL 0 |
+
+### 구조
+
+```
+work/vip/apb/                  # 재사용 가능한 APB UVM VIP
+├── apb_interface.sv
+├── apb_transaction.sv
+├── apb_sequencer.sv
+├── apb_driver.sv               # SETUP->ACCESS, pready wait, timeout
+├── apb_monitor.sv
+├── apb_agent.sv
+└── apb_coverage.sv
+
+work/rtl/example_dut/
+└── apb_reg_slave.sv            # APB VIP 단독 검증용 예제 슬레이브
+
+work/tb/apb_standalone_tb/
+├── apb_wr_rd_seq.sv
+├── apb_scoreboard.sv
+└── apb_dut_test.sv
+
+work/rtl/bridge/
+└── axi_apb_bridge.sv           # AXI4-Lite 슬레이브 <-> APB 마스터 변환 FSM
+
+work/tb/axi_apb_bridge_tb/
+└── axi_apb_bridge_test.sv      # AXI4 VIP(Phase1) -> 브리지 -> apb_reg_slave 통합 검증
+```
+
+### 검증 전략
+
+1. APB VIP를 Phase 1 AXI4 VIP와 동일한 구조(driver/monitor/agent/sequence/scoreboard/coverage)로 구축하고, 예제 APB 슬레이브(`apb_reg_slave`)로 단독 검증.
+2. AXI4-Lite ↔ APB 변환 브리지(`axi_apb_bridge`)를 별도 RTL로 설계. AXI4-Lite 슬레이브 포트로 AW/W(독립 handshake, Phase 1과 동일한 문제 대비)를 캡처해서, APB 마스터 포트의 SETUP→ACCESS 시퀀스로 변환하는 FSM 구조.
+3. Phase 1의 AXI4 VIP, sequence, scoreboard를 **그대로 재사용**해서, "AXI4 VIP → 브리지 → 실제 APB 슬레이브"까지 한 번에 검증. 이 단계에서는 APB VIP(driver/monitor)를 쓰지 않음 — 브리지 자체가 APB 마스터 역할을 하기 때문.
+
+### 주요 트러블슈팅
+
+- **VS Code `` `timescale `` 충돌**: UVM 클래스 파일들에 `` `timescale `` 지시어를 넣었더니, UVM 패키지(`` `timescale `` 없음)와 파싱 순서상 충돌해서 `ITSFM` 에러와 함께 뒤이은 파일들까지 파싱이 깨짐. UVM 클래스 파일에서는 `` `timescale `` 을 빼는 것으로 해결(순수 RTL 모듈에만 유지).
+- **UVM 클래스 인식 불가**: `-ntb_opts uvm`만으로는 각 파일에서 `uvm_sequence_item` 등이 자동으로 안 잡히는 경우가 있어, UVM 클래스를 쓰는 파일마다 `import uvm_pkg::*;` / `` `include "uvm_macros.svh" `` 를 명시적으로 추가해서 해결.
 
 ## Tools
 
