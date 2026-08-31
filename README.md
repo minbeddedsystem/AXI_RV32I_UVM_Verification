@@ -1,4 +1,4 @@
-# AXI_RV32I_UVM_Verification
+# AXI_APB_RV32I_UVM_Verification
 
 AXI4-Lite / APB UVM VIP를 설계하고, 이를 이용해 RV32I 5-stage 파이프라인 CPU와 AXI-APB 브리지를 검증하는 프로젝트입니다. 팹리스 SoC 설계/검증 직무 포트폴리오로 진행했으며, **Phase 1~3 전체 완료**된 상태입니다.
 
